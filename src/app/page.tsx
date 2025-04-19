@@ -70,6 +70,7 @@ export default function Home() {
   const [scheduleName, setScheduleName] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function Home() {
   const handleGenerateSchedule = async () => {
     setError(null);
     setStatusMessage(null);
+    setIsLoading(true);
 
     try {
       const result = await generateScheduleFromPrompt({ prompt: scheduleText });
@@ -105,12 +107,15 @@ export default function Home() {
       setStatusMessage("Schedule generated successfully!");
     } catch (e: any) {
       setError(`Failed to generate schedule: ${e.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleInterpretSchedule = async () => {
     setError(null);
     setStatusMessage(null);
+    setIsLoading(true);
 
     try {
       const result = await interpretScheduleText({ scheduleText: scheduleText });
@@ -118,6 +123,8 @@ export default function Home() {
       setStatusMessage("Schedule interpreted successfully!");
     } catch (e: any) {
       setError(`Failed to interpret schedule: ${e.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -236,11 +243,13 @@ export default function Home() {
           </div>
 
           <div className="flex justify-between mb-4">
-            <Button variant="outline" onClick={handleGenerateSchedule}>
+            <Button variant="outline" onClick={handleGenerateSchedule} disabled={isLoading}>
               Generate Schedule
+              {isLoading && <Icons.spinner className="ml-2 h-4 w-4 animate-spin" />}
             </Button>
-            <Button variant="outline" onClick={handleInterpretSchedule}>
+            <Button variant="outline" onClick={handleInterpretSchedule} disabled={isLoading}>
               Interpret Schedule
+              {isLoading && <Icons.spinner className="ml-2 h-4 w-4 animate-spin" />}
             </Button>
           </div>
         </CardContent>
@@ -430,3 +439,4 @@ export default function Home() {
     </div>
   );
 }
+
