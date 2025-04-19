@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
 import { CalendarEvent } from "@/services/calendar";
@@ -25,6 +25,17 @@ import { Label } from "@/components/ui/label";
 import * as z from "zod"
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const eventSchema = z.object({
   summary: z.string().min(3, {
@@ -38,12 +49,39 @@ const eventSchema = z.object({
 
 type EventValues = z.infer<typeof eventSchema>
 
+interface Schedule {
+  id: string;
+  name: string;
+  events: CalendarEvent[];
+}
+
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 15);
+}
+
 export default function Home() {
   const [scheduleText, setScheduleText] = useState("");
   const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [scheduleName, setScheduleName] = useState<string>("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    const storedSchedules = localStorage.getItem('schedules');
+    if (storedSchedules) {
+      setSchedules(JSON.parse(storedSchedules));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('schedules', JSON.stringify(schedules));
+  }, [schedules]);
 
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema),
@@ -64,7 +102,7 @@ export default function Home() {
     try {
       const result = await generateScheduleFromPrompt({ prompt: scheduleText });
       setGeneratedSchedule(result.events as CalendarEvent[]);
-      setStatusMessage("Schedule generated successfully!  Check your Google Calendar.");
+      setStatusMessage("Schedule generated successfully!");
     } catch (e: any) {
       setError(`Failed to generate schedule: ${e.message}`);
     }
@@ -77,7 +115,7 @@ export default function Home() {
     try {
       const result = await interpretScheduleText({ scheduleText: scheduleText });
       setGeneratedSchedule(result as CalendarEvent[]);
-      setStatusMessage("Schedule interpreted successfully! Check your Google Calendar.");
+      setStatusMessage("Schedule interpreted successfully!");
     } catch (e: any) {
       setError(`Failed to interpret schedule: ${e.message}`);
     }
@@ -106,6 +144,79 @@ export default function Home() {
       setGeneratedSchedule(updatedSchedule);
       setEditingEventIndex(null);
       setStatusMessage("Schedule updated successfully!");
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    if (selectedScheduleId) {
+      const selectedSchedule = schedules.find(schedule => schedule.id === selectedScheduleId);
+      if (selectedSchedule) {
+        setGeneratedSchedule(selectedSchedule.events);
+      }
+    } else {
+      setGeneratedSchedule([]);
+    }
+    setStatusMessage("Changes discarded.");
+  };
+
+  const handleSaveSchedule = () => {
+    if (scheduleName.trim() === "") {
+      setError("Schedule name is required.");
+      return;
+    }
+
+    const newSchedule: Schedule = {
+      id: generateId(),
+      name: scheduleName,
+      events: generatedSchedule,
+    };
+
+    setSchedules([...schedules, newSchedule]);
+    setStatusMessage("Schedule saved successfully!");
+    setError(null);
+  };
+
+  const handleAddToCalendar = async () => {
+    setError(null);
+    setStatusMessage(null);
+
+    try {
+      for (const event of generatedSchedule) {
+        await createCalendarEvent(event);
+      }
+      setStatusMessage("Schedule added to calendar successfully!  Check your Google Calendar.");
+    } catch (e: any) {
+      setError(`Failed to add schedule to calendar: ${e.message}`);
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    setDeletingScheduleId(scheduleId);
+    setIsDialogOpen(true);
+  };
+
+  const confirmDeleteSchedule = async () => {
+      if (deletingScheduleId) {
+          const updatedSchedules = schedules.filter(schedule => schedule.id !== deletingScheduleId);
+          setSchedules(updatedSchedules);
+          setGeneratedSchedule([]);
+          setSelectedScheduleId(null);
+          setStatusMessage("Schedule deleted successfully!");
+          setIsDialogOpen(false);
+      }
+  };
+
+  const cancelDeleteSchedule = () => {
+    setIsDialogOpen(false);
+    setDeletingScheduleId(null);
+  };
+
+  const handleLoadSchedule = (scheduleId: string) => {
+    setSelectedScheduleId(scheduleId);
+    const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
+    if (selectedSchedule) {
+      setGeneratedSchedule(selectedSchedule.events);
+      setStatusMessage(`Schedule "${selectedSchedule.name}" loaded successfully!`);
     }
   };
 
@@ -151,6 +262,30 @@ export default function Home() {
         </Alert>
       )}
 
+        <Card className="w-full max-w-md mt-4">
+          <CardContent>
+            <h2 className="text-lg font-semibold mb-2">Previous Schedules:</h2>
+            {schedules.length === 0 ? (
+              <p>No schedules saved yet.</p>
+            ) : (
+              <ul>
+                {schedules.map((schedule) => (
+                  <li key={schedule.id} className="mb-2">
+                    <Button variant="secondary" size="sm" onClick={() => handleLoadSchedule(schedule.id)}>
+                      {schedule.name}
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteSchedule(schedule.id)}>
+                      <Icons.trash className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+
       {generatedSchedule.length > 0 && (
         <Card className="w-full max-w-md mt-4">
           <CardContent>
@@ -169,6 +304,27 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+
+            <div className="flex justify-between mt-4">
+              <Input
+                type="text"
+                placeholder="Enter schedule name"
+                value={scheduleName}
+                onChange={(e) => setScheduleName(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-between mt-4">
+              <Button variant="outline" onClick={handleSaveSchedule}>
+                Save Schedule
+              </Button>
+              <Button variant="outline" onClick={handleDiscardChanges}>
+                Discard Changes
+              </Button>
+              <Button variant="outline" onClick={handleAddToCalendar}>
+                Add to Calendar
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -238,12 +394,39 @@ export default function Home() {
                     </FormItem>
                   )}
                 />
+                 <FormField
+                  control={form.control}
+                  name="recurrence"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recurrence</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Recurrence rule (e.g., RRULE:FREQ=WEEKLY;COUNT=10)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit">Update Event</Button>
               </form>
             </Form>
           </CardContent>
         </Card>
       )}
+       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. Are you sure you want to delete this schedule?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={cancelDeleteSchedule}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSchedule}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
