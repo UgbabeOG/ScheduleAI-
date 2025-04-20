@@ -34,7 +34,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useTheme } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/theme-provider";
+import { useTheme } from 'next-themes';
 
 
 const eventSchema = z.object({
@@ -68,12 +69,13 @@ const scheduleExamples = [
 ];
 
 export default function Home() {
-  const { setTheme, resolvedTheme } = useTheme(); // Get theme settings
+  const editingEventIndexInitialValue: null = null;
+  const { setTheme, resolvedTheme } = useTheme() // Get theme settings
   const [scheduleText, setScheduleText] = useState(""); // Input text for schedule
   const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]); // Generated events
   const [statusMessage, setStatusMessage] = useState<string | null>(null); // Status message
   const [error, setError] = useState<string | null>(null); // Error message
-  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null); // Index of event being edited
+  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(editingEventIndexInitialValue); // Index of event being edited
   const [schedules, setSchedules] = useState<Schedule[]>([]); // Saved schedules
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null); // Selected schedule ID
   const [scheduleName, setScheduleName] = useState<string>(""); // Name for new schedule
@@ -166,7 +168,7 @@ export default function Home() {
       alarm: false, // Assuming default value for alarm
       recurrence: "" // Assuming default value for recurrence
     });
-  }, [generatedSchedule, form]);
+  }, [generatedSchedule, form, setEditingEventIndex]);
 
   const handleUpdateEvent = useCallback((values: EventValues) => {
     if (editingEventIndex !== null) {
@@ -180,7 +182,7 @@ export default function Home() {
       setEditingEventIndex(null);
       setStatusMessage("Schedule updated successfully!");
     }
-  }, [generatedSchedule, editingEventIndex]);
+  }, [generatedSchedule, editingEventIndex, setGeneratedSchedule, setEditingEventIndex, setStatusMessage]);
   
   const handleDiscardChanges = () => {
     if (selectedScheduleId) {
@@ -209,7 +211,7 @@ export default function Home() {
     setSchedules([...schedules, newSchedule]);
     setStatusMessage("Schedule saved successfully!");
     setError(null);
-  }, [scheduleName, generatedSchedule, schedules]);
+  }, [scheduleName, generatedSchedule, schedules, setError, setSchedules, setStatusMessage]);
 
   const handleAddToCalendar = async () => {
     setError(null);
@@ -242,12 +244,12 @@ export default function Home() {
       setStatusMessage("Schedule deleted successfully!");
       setIsDialogOpen(false);
     }
-  }, [schedules, deletingScheduleId,handleDeleteSchedule]);
+  }, [schedules, deletingScheduleId, setSchedules, setGeneratedSchedule, setSelectedScheduleId, setStatusMessage, setIsDialogOpen]);
 
   const cancelDeleteSchedule = useCallback(() => {
     setIsDialogOpen(false);
     setDeletingScheduleId(null);
-  }, []);
+  }, [setIsDialogOpen, setDeletingScheduleId]);
 
   const handleLoadSchedule = useCallback(async (scheduleId: string) => {
     if (isLoading) return
@@ -262,7 +264,7 @@ export default function Home() {
      } finally {
         setIsLoading(false);
       }
-  }, [isLoading, schedules, setGeneratedSchedule, setIsLoading, setSelectedScheduleId, setStatusMessage]);
+  }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, setStatusMessage]);
 
   return (
     <> 
