@@ -320,7 +320,7 @@ export default function Home() {
     <main className="relative flex flex-col items-center justify-center min-h-screen py-2">
     
       <div className="flex items-center space-x-2 absolute right-4 top-4">
-            <Label htmlFor="dark-mode">Dark Mode</Label>
+            <Label htmlFor="dark-mode">{resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}</Label>
             <Switch
               id="dark-mode"
               checked={resolvedTheme === "dark"}
@@ -563,3 +563,4 @@ export default function Home() {
     </>
   );
 }
+
