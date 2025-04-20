@@ -256,7 +256,7 @@ export default function Home() {
       </Card>
 
       {statusMessage && (
-        <Alert className="mt-4 w-full max-w-md">
+        <Alert className="mt-4 w-full max-w-md transition-all duration-500 ease-in-out">
           <Icons.check className="h-4 w-4" />
           <AlertTitle>Success</AlertTitle>
           <AlertDescription>{statusMessage}</AlertDescription>
@@ -264,7 +264,7 @@ export default function Home() {
       )}
 
       {error && (
-        <Alert variant="destructive" className="mt-4 w-full max-w-md">
+        <Alert variant="destructive" className="mt-4 w-full max-w-md transition-all duration-500 ease-in-out">
           <Icons.close className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
@@ -296,7 +296,7 @@ export default function Home() {
 
 
       {generatedSchedule.length > 0 && (
-        <Card className="w-full max-w-md mt-4">
+        <Card className="w-full max-w-md mt-4 transition-opacity duration-500 ease-in-out">
           <CardContent>
             <h2 className="text-lg font-semibold mb-2">Generated Schedule:</h2>
             <ul>
@@ -339,7 +339,7 @@ export default function Home() {
       )}
 
       {editingEventIndex !== null && (
-        <Card className="w-full max-w-md mt-4">
+        <Card className="w-full max-w-md mt-4 transition-opacity duration-500 ease-in-out">
           <CardContent>
             <h2 className="text-lg font-semibold mb-2">Edit Event</h2>
             <Form {...form}>
@@ -439,4 +439,5 @@ export default function Home() {
     </div>
   );
 }
+
 
