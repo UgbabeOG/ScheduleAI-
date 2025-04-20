@@ -37,6 +37,9 @@ import {
 import { ThemeProvider } from "@/components/theme-provider";
 import { useTheme } from 'next-themes';
 import { useToast } from "@/hooks/use-toast"
+import Particles from "react-particles";
+import { loadFull } from "tsparticles";
+import { INestParticlesProps } from "react-tsparticles";
 
 
 const eventSchema = z.object({
@@ -81,7 +84,8 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog state
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null); // Schedule ID being deleted
   const [isLoading, setIsLoading] = useState(false);
-   const { toast } = useToast()
+  const { toast } = useToast()
+    const [particlesInit, setParticlesInit] = useState(false);
 
 
   useEffect(() => {
@@ -289,8 +293,88 @@ export default function Home() {
     setScheduleText("");
   };
 
+    const particlesOptions: INestParticlesProps['options'] = {
+        fullScreen: {
+            enable: false,
+        },
+        detectRetina: true,
+        fpsLimit: 60,
+        interactivity: {
+            detectsOn: "canvas",
+            events: {
+                onclick: {
+                    enable: true,
+                    mode: "push",
+                },
+                onhover: {
+                    enable: true,
+                    mode: "repulse",
+                },
+                resize: true,
+            },
+            modes: {
+                push: {
+                    quantity: 4,
+                },
+                repulse: {
+                    distance: 200,
+                    duration: 0.4,
+                },
+            },
+        },
+        particles: {
+            color: {
+                value: "#008080",
+            },
+            links: {
+                color: "#008080",
+                distance: 150,
+                enable: true,
+                opacity: 0.5,
+                width: 1,
+            },
+            collisions: {
+                enable: true,
+            },
+            move: {
+                directions: "none",
+                enable: true,
+                outModes: {
+                    default: "bounce",
+                },
+                random: false,
+                speed: 3,
+                straight: false,
+            },
+            number: {
+                density: {
+                    enable: true,
+                    area: 800,
+                },
+                value: 80,
+            },
+            opacity: {
+                value: 0.5,
+            },
+            shape: {
+                type: "circle",
+            },
+            size: {
+                value: { min: 1, max: 5 },
+            },
+        },
+        detectRetina: true,
+    };
+
+    const particlesInitFunc = useCallback(async (engine: any) => {
+        await loadFull(engine);
+        setParticlesInit(true);
+    }, []);
+
   return (
-    <> 
+    <>
+    
+    <Particles id="tsparticles" init={particlesInitFunc} options={particlesOptions} />
     
 
     <main className="relative flex flex-col items-center justify-center min-h-screen py-2">
@@ -309,23 +393,37 @@ export default function Home() {
       {/* Input card */}
       <Card className="w-full max-w-md">
         <CardContent className="p-4">
-          <div className="mb-4 relative">
-            <Input
-              type="text"
-              placeholder="Enter schedule or instruction"
-              value={scheduleText}
-              onChange={(e) => setScheduleText(e.target.value)}
-            />
-            {scheduleText && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full"
-                onClick={clearInputField}
-              >
-                <Icons.close className="h-4 w-4" />
-              </Button>
-            )}
+          <div className="mb-4">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {scheduleExamples.map((example, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setScheduleText(example)}
+                  >
+                    {example}
+                  </Button>
+                ))}
+              </div>
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Enter schedule or instruction"
+                value={scheduleText}
+                onChange={(e) => setScheduleText(e.target.value)}
+              />
+              {scheduleText && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full"
+                  onClick={clearInputField}
+                >
+                  <Icons.close className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-between mb-4">
@@ -510,3 +608,4 @@ export default function Home() {
     </>
   );
 }
+
