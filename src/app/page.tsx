@@ -74,6 +74,7 @@ export default function Home() {
   const { setTheme, resolvedTheme } = useTheme() // Get theme settings
   const [scheduleText, setScheduleText] = useState(""); // Input text for schedule
   const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]); // Generated events
+  const [initialGeneratedSchedule, setInitialGeneratedSchedule] = useState<CalendarEvent[]>([]); // Store the initially generated schedule
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(editingEventIndexInitialValue); // Index of event being edited
   const [schedules, setSchedules] = useState<Schedule[]>([]); // Saved schedules
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null); // Selected schedule ID
@@ -133,6 +134,7 @@ export default function Home() {
     try {
       const result = await generateScheduleFromPrompt({ prompt: scheduleText });
       setGeneratedSchedule(result.events as CalendarEvent[]);
+      setInitialGeneratedSchedule(result.events as CalendarEvent[]);
         toast({
             title: "Success",
             description: "Schedule generated successfully!",
@@ -146,7 +148,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [scheduleText, setIsLoading, setGeneratedSchedule, toast]);
+  }, [scheduleText, setIsLoading, setGeneratedSchedule, setInitialGeneratedSchedule, toast]);
   
   // Function to interpret schedule
   const handleInterpretSchedule = useCallback(async () => {
@@ -156,6 +158,7 @@ export default function Home() {
     try {
       const result = await interpretScheduleText({ scheduleText: scheduleText });
       setGeneratedSchedule(result as CalendarEvent[]);
+      setInitialGeneratedSchedule(result as CalendarEvent[]);
         toast({
             title: "Success",
             description: "Schedule interpreted successfully!",
@@ -169,7 +172,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [scheduleText, setIsLoading, setGeneratedSchedule, toast]);
+  }, [scheduleText, setIsLoading, setGeneratedSchedule, setInitialGeneratedSchedule, toast]);
 
   // Function to edit event
   const handleEditEvent = useCallback((index: number) => {
@@ -202,14 +205,7 @@ export default function Home() {
   }, [generatedSchedule, editingEventIndex, setGeneratedSchedule, setEditingEventIndex, toast]);
   
   const handleDiscardChanges = () => {
-    if (selectedScheduleId) {
-      const selectedSchedule = schedules.find(schedule => schedule.id === selectedScheduleId);
-      if (selectedSchedule) {
-        setGeneratedSchedule(selectedSchedule.events);
-      }
-    } else {
-      setGeneratedSchedule([]);
-    }
+    setGeneratedSchedule(initialGeneratedSchedule);
        toast({
             title: "Success",
             description: "Changes discarded.",
@@ -292,6 +288,7 @@ export default function Home() {
       const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
       if (selectedSchedule) {
         setGeneratedSchedule(selectedSchedule.events);
+        setInitialGeneratedSchedule(selectedSchedule.events);
            toast({
                 title: "Success",
                 description: `Schedule "${selectedSchedule.name}" loaded successfully!`,
@@ -300,7 +297,7 @@ export default function Home() {
      } finally {
         setIsLoading(false);
       }
-  }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, toast]);
+  }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, setInitialGeneratedSchedule, toast]);
 
   const clearInputField = () => {
     setScheduleText("");
@@ -450,6 +447,7 @@ export default function Home() {
       )}
 
       {editingEventIndex !== null && (
+        <>
         <Card className="w-full max-w-md mt-4 transition-opacity duration-500 ease-in-out">
           <CardContent>
             <h2 className="text-lg font-semibold mb-2">Edit Event</h2>
@@ -524,7 +522,7 @@ export default function Home() {
                         <Input placeholder="Recurrence rule (e.g., RRULE:FREQ=WEEKLY;COUNT=10)" {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
+                    FormItem>
                   )}
                 />
                  <Button type="submit">Update Event</Button>
@@ -532,6 +530,7 @@ export default function Home() {
             </Form> 
           </CardContent>
         </Card>
+        </>
       )}
        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <AlertDialogContent>
@@ -551,5 +550,8 @@ export default function Home() {
     </>
   );
 }
+
+
+
 
 
