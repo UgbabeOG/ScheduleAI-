@@ -40,4 +40,4 @@ next-env.d.ts
 .genkit/*
 
 #esecrets env
-.en
+.env
