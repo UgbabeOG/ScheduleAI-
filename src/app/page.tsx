@@ -1,5 +1,4 @@
 "use client";
-import {ThemeProvider, useTheme } from "@/components/theme-provider";
 import { useState, useEffect } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
@@ -35,9 +34,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useTheme } from "next-themes";
 
-import Particles, { init } from "react-tsparticles";
-import { loadFull } from "tsparticles";
 
 const eventSchema = z.object({
   summary: z.string().min(3, {
@@ -81,10 +79,6 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const particlesInit = async (engine: any) => {
-    await loadFull(engine);
-  };
 
 
   useEffect(() => {
@@ -252,80 +246,7 @@ export default function Home() {
 
   return (
     <>
-      <Particles
-        id="tsparticles"
-        init={particlesInit}
-        options={{
-          fullScreen: {
-            enable: false,
-          },
-          particles: {
-            number: {
-              value: 60,
-              density: {
-                enable: true,
-                area: 800,
-              },
-            },
-            color: {
-              value: resolvedTheme === "dark" ? '#ffffff' : '#008080',
-            },
-            shape: {
-              type: "circle",
-            },
-            opacity: {
-              value: 0.5,
-              random: true,
-            },
-            size: {
-              value: 3,
-              random: true,
-            },
-            line_linked: {
-              enable: true,
-              distance: 150,
-              color: resolvedTheme === "dark" ? '#ffffff' : '#008080',
-              opacity: 0.4,
-              width: 1,
-            },
-            move: {
-              enable: true,
-              speed: 2,
-              direction: "none",
-              random: false,
-              straight: false,
-              out_mode: "out",
-              attract: {
-                enable: false,
-                distance: 200,
-                duration: 0.4,
-              },
-            },
-          },
-          interactivity: {
-            events: {
-              onhover: {
-                enable: true,
-                mode: "repulse",
-              },
-              onclick: {
-                enable: true,
-                mode: "push",
-              },
-            },
-            modes: {
-              repulse: {
-                distance: 100,
-                duration: 0.4,
-              },
-              push: {
-                particles_nb: 4,
-              },
-            },
-          },
-          retina_detect: true,
-        }}
-      />
+
 
     <main className="relative flex flex-col items-center justify-center min-h-screen py-2">
       <div className="flex items-center space-x-2 absolute right-4 top-4">
@@ -550,4 +471,3 @@ export default function Home() {
     </>
   );
 }
-
