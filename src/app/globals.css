@@ -3,8 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+.body-container {
+  @apply container mx-auto px-4 md:px-6 lg:px-8 flex flex-col min-h-screen;
+  font-family: Arial, Helvetica, sans-serif; 
+
 }
 
 @layer base {

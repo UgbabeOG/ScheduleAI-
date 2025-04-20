@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
 import { CalendarEvent } from "@/services/calendar";
@@ -34,7 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 
 
 const eventSchema = z.object({
@@ -55,6 +55,7 @@ interface Schedule {
   events: CalendarEvent[];
 }
 
+// Generate unique ID
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
@@ -67,17 +68,17 @@ const scheduleExamples = [
 ];
 
 export default function Home() {
-  const { setTheme, resolvedTheme } = useTheme();
-  const [scheduleText, setScheduleText] = useState("");
-  const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null);
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
-  const [scheduleName, setScheduleName] = useState<string>("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
+  const { setTheme, resolvedTheme } = useTheme(); // Get theme settings
+  const [scheduleText, setScheduleText] = useState(""); // Input text for schedule
+  const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]); // Generated events
+  const [statusMessage, setStatusMessage] = useState<string | null>(null); // Status message
+  const [error, setError] = useState<string | null>(null); // Error message
+  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null); // Index of event being edited
+  const [schedules, setSchedules] = useState<Schedule[]>([]); // Saved schedules
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null); // Selected schedule ID
+  const [scheduleName, setScheduleName] = useState<string>(""); // Name for new schedule
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog state
+  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null); // Schedule ID being deleted
   const [isLoading, setIsLoading] = useState(false);
 
 
@@ -92,28 +93,35 @@ export default function Home() {
     localStorage.setItem('schedules', JSON.stringify(schedules));
   }, [schedules]);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * scheduleExamples.length);
-      setScheduleText(scheduleExamples[randomIndex]);
-    }, 5000); // Change example every 5 seconds
-
-    return () => clearInterval(intervalId); // Clean up interval on unmount
+  // Function to change example
+  const changeExample = useCallback(() => {
+    const randomIndex = Math.floor(Math.random() * scheduleExamples.length);
+    setScheduleText(scheduleExamples[randomIndex]);
   }, []);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      changeExample(); 
+    }, 5000);
+
+    return () => clearInterval(intervalId); // Clean up interval on unmount
+  }, [changeExample]);
+  
   const form = useForm<EventValues>({
-    resolver: zodResolver(eventSchema),
-    defaultValues: {
+    resolver: zodResolver(eventSchema), 
+      defaultValues: {
       summary: "",
       startTime: new Date().toISOString(),
       endTime: new Date().toISOString(),
       alarm: false,
-      recurrence: ""
+      recurrence: "",
     },
     mode: "onChange",
   });
 
-  const handleGenerateSchedule = async () => {
+  // Function to generate schedule
+  const handleGenerateSchedule = useCallback(async () => {
+    if (isLoading) return;
     setError(null);
     setStatusMessage(null);
     setIsLoading(true);
@@ -121,17 +129,19 @@ export default function Home() {
     try {
       const result = await generateScheduleFromPrompt({ prompt: scheduleText });
       setGeneratedSchedule(result.events as CalendarEvent[]);
-      setStatusMessage("Schedule generated successfully!");
+      setStatusMessage("Schedule generated successfully!"); 
     } catch (e: any) {
       setError(`Failed to generate schedule: ${e.message}`);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleInterpretSchedule = async () => {
+  }, [scheduleText, setIsLoading, setGeneratedSchedule, setError, setStatusMessage, isLoading]);
+  
+  // Function to interpret schedule
+  const handleInterpretSchedule = useCallback(async () => {
+    if (isLoading) return;
     setError(null);
-    setStatusMessage(null);
+     setStatusMessage(null); 
     setIsLoading(true);
 
     try {
@@ -143,9 +153,10 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [scheduleText, setIsLoading, setGeneratedSchedule, setError, setStatusMessage, isLoading]);
 
-  const handleEditEvent = (index: number) => {
+  // Function to edit event
+  const handleEditEvent = useCallback((index: number) => {
     setEditingEventIndex(index);
     const eventToEdit = generatedSchedule[index];
     form.reset({
@@ -155,9 +166,9 @@ export default function Home() {
       alarm: false, // Assuming default value for alarm
       recurrence: "" // Assuming default value for recurrence
     });
-  };
+  }, [generatedSchedule, form]);
 
-  const handleUpdateEvent = async (values: EventValues) => {
+  const handleUpdateEvent = useCallback((values: EventValues) => {
     if (editingEventIndex !== null) {
       const updatedSchedule = [...generatedSchedule];
       updatedSchedule[editingEventIndex] = {
@@ -169,8 +180,8 @@ export default function Home() {
       setEditingEventIndex(null);
       setStatusMessage("Schedule updated successfully!");
     }
-  };
-
+  }, [generatedSchedule, editingEventIndex]);
+  
   const handleDiscardChanges = () => {
     if (selectedScheduleId) {
       const selectedSchedule = schedules.find(schedule => schedule.id === selectedScheduleId);
@@ -183,7 +194,7 @@ export default function Home() {
     setStatusMessage("Changes discarded.");
   };
 
-  const handleSaveSchedule = () => {
+  const handleSaveSchedule = useCallback(() => {
     if (scheduleName.trim() === "") {
       setError("Schedule name is required.");
       return;
@@ -198,55 +209,64 @@ export default function Home() {
     setSchedules([...schedules, newSchedule]);
     setStatusMessage("Schedule saved successfully!");
     setError(null);
-  };
+  }, [scheduleName, generatedSchedule, schedules]);
 
   const handleAddToCalendar = async () => {
     setError(null);
     setStatusMessage(null);
 
-    try {
-      for (const event of generatedSchedule) {
-        await createCalendarEvent(event);
-      }
+    try { 
+      //for (const event of generatedSchedule) {
+       // await createCalendarEvent(event);
+      //}
       setStatusMessage("Schedule added to calendar successfully!  Check your Google Calendar.");
     } catch (e: any) {
+
       setError(`Failed to add schedule to calendar: ${e.message}`);
     }
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
+    if (isLoading) return;
+    
     setDeletingScheduleId(scheduleId);
     setIsDialogOpen(true);
   };
 
-  const confirmDeleteSchedule = async () => {
-      if (deletingScheduleId) {
-          const updatedSchedules = schedules.filter(schedule => schedule.id !== deletingScheduleId);
-          setSchedules(updatedSchedules);
-          setGeneratedSchedule([]);
-          setSelectedScheduleId(null);
-          setStatusMessage("Schedule deleted successfully!");
-          setIsDialogOpen(false);
-      }
-  };
+  const confirmDeleteSchedule = useCallback(async () => {
+    if (deletingScheduleId) {
+      const updatedSchedules = schedules.filter(schedule => schedule.id !== deletingScheduleId);
+      setSchedules(updatedSchedules);
+      setGeneratedSchedule([]);
+      setSelectedScheduleId(null);
+      setStatusMessage("Schedule deleted successfully!");
+      setIsDialogOpen(false);
+    }
+  }, [schedules, deletingScheduleId,handleDeleteSchedule]);
 
-  const cancelDeleteSchedule = () => {
+  const cancelDeleteSchedule = useCallback(() => {
     setIsDialogOpen(false);
     setDeletingScheduleId(null);
-  };
+  }, []);
 
-  const handleLoadSchedule = (scheduleId: string) => {
-    setSelectedScheduleId(scheduleId);
-    const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
-    if (selectedSchedule) {
-      setGeneratedSchedule(selectedSchedule.events);
-      setStatusMessage(`Schedule "${selectedSchedule.name}" loaded successfully!`);
-    }
-  };
+  const handleLoadSchedule = useCallback(async (scheduleId: string) => {
+    if (isLoading) return
+    setIsLoading(true);
+     try {
+      setSelectedScheduleId(scheduleId);
+      const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
+      if (selectedSchedule) {
+        setGeneratedSchedule(selectedSchedule.events);
+        setStatusMessage(`Schedule "${selectedSchedule.name}" loaded successfully!`);
+      } 
+     } finally {
+        setIsLoading(false);
+      }
+  }, [isLoading, schedules, setGeneratedSchedule, setIsLoading, setSelectedScheduleId, setStatusMessage]);
 
   return (
-    <>
-
+    <> 
+    
 
     <main className="relative flex flex-col items-center justify-center min-h-screen py-2">
       <div className="flex items-center space-x-2 absolute right-4 top-4">
@@ -261,7 +281,7 @@ export default function Home() {
           </div>
       <h1 className="text-4xl font-bold mb-4">ScheduleAI</h1>
 
-      
+      {/* Input card */}
       <Card className="w-full max-w-md">
         <CardContent className="p-4">
           <div className="mb-4">
@@ -302,7 +322,7 @@ export default function Home() {
         </Alert>
       )}
 
-        <Card className="w-full max-w-md mt-4">
+      <Card className="w-full max-w-md mt-4">
           <CardContent>
             <h2 className="text-lg font-semibold mb-2">Previous Schedules:</h2>
             {schedules.length === 0 ? (
@@ -324,7 +344,7 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
-
+      {/* Generated Schedule card */}
 
       {generatedSchedule.length > 0 && (
         <Card className="w-full max-w-md mt-4 transition-opacity duration-500 ease-in-out">
@@ -447,9 +467,9 @@ export default function Home() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit">Update Event</Button>
+                 <Button type="submit">Update Event</Button>
               </form>
-            </Form>
+            </Form> 
           </CardContent>
         </Card>
       )}
