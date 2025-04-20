@@ -1,5 +1,4 @@
 "use client";
-import { useTheme } from "next-themes";
 import { useState, useEffect } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
@@ -38,6 +37,7 @@ import {
 
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
+import { useTheme } from "next-themes";
 const eventSchema = z.object({
   summary: z.string().min(3, {
     message: "Summary must be at least 3 characters.",
@@ -68,6 +68,7 @@ const scheduleExamples = [
 ];
 
 export default function Home() {
+  const { setTheme, resolvedTheme } = useTheme()
   const [scheduleText, setScheduleText] = useState("");
   const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -111,8 +112,41 @@ export default function Home() {
         },
         resize: true,
       },
-    }
-  const { setTheme, resolvedTheme } = useTheme()
+    },
+    particles: {
+      color: {
+        value: "#ffffff",
+      },
+      move: {
+        direction: "none",
+        enable: true,
+        outModes: {
+          default: "bounce",
+        },
+        random: false,
+        speed: 1,
+        straight: false,
+      },
+      number: {
+        density: {
+          enable: true,
+          area: 800,
+        },
+        value: 80,
+      },
+      opacity: {
+        value: 0.5,
+      },
+      shape: {
+        type: "circle",
+      },
+      size: {
+        value: { min: 1, max: 5 },
+      },
+    },
+    detectRetina: true
+  };
+
 
   useEffect(() => {
     const storedSchedules = localStorage.getItem('schedules');
@@ -520,5 +554,7 @@ export default function Home() {
     </>
   );
 }
+
+
 
 
