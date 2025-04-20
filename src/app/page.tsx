@@ -447,7 +447,7 @@ export default function Home() {
       )}
 
       {editingEventIndex !== null && (
-        <>
+        
         <Card className="w-full max-w-md mt-4 transition-opacity duration-500 ease-in-out">
           <CardContent>
             <h2 className="text-lg font-semibold mb-2">Edit Event</h2>
@@ -457,7 +457,7 @@ export default function Home() {
                   control={form.control}
                   name="summary"
                   render={({ field }) => (
-                    <>
+                    
                       <FormItem>
                         <FormLabel>Summary</FormLabel>
                         <FormControl>
@@ -465,14 +465,14 @@ export default function Home() {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    </>
+                    
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="startTime"
                   render={({ field }) => (
-                    <>
+                    
                       <FormItem>
                         <FormLabel>Start Time</FormLabel>
                         <FormControl>
@@ -480,14 +480,14 @@ export default function Home() {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    </>
+                    
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="endTime"
                   render={({ field }) => (
-                    <>
+                    
                       <FormItem>
                         <FormLabel>End Time</FormLabel>
                         <FormControl>
@@ -495,14 +495,14 @@ export default function Home() {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    </>
+                    
                   )}
                 />
                  <FormField
                   control={form.control}
                   name="alarm"
                   render={({ field }) => (
-                    <>
+                    
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel>Set Alarm</FormLabel>
@@ -517,14 +517,14 @@ export default function Home() {
                           />
                         </FormControl>
                       </FormItem>
-                    </>
+                    
                   )}
                 />
                  <FormField
                   control={form.control}
                   name="recurrence"
                   render={({ field }) => (
-                    <>
+                    
                       <FormItem>
                         <FormLabel>Recurrence</FormLabel>
                         <FormControl>
@@ -532,7 +532,7 @@ export default function Home() {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    </>
+                    
                   )}
                 />
                  <Button type="submit">Update Event</Button>
@@ -540,7 +540,7 @@ export default function Home() {
             </Form> 
           </CardContent>
         </Card>
-        </>
+        
       )}
        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <AlertDialogContent>
@@ -560,9 +560,3 @@ export default function Home() {
     </>
   );
 }
-
-
-
-
-
-
