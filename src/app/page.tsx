@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
-import { CalendarEvent } from "@/services/calendar";
+import { CalendarEvent, createCalendarEvent } from "@/services/calendar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useTheme } from 'next-themes';
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils";
 
 
 const eventSchema = z.object({
@@ -81,6 +82,11 @@ export default function Home() {
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null); // Schedule ID being deleted
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast()
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [suggestion, setSuggestion] = useState(scheduleExamples[0]);
+  const [isSuggestionFading, setIsSuggestionFading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
 
 
   useEffect(() => {
@@ -94,6 +100,18 @@ export default function Home() {
     localStorage.setItem('schedules', JSON.stringify(schedules));
   }, [schedules]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setIsSuggestionFading(true);
+      setTimeout(() => {
+        setExampleIndex((prevIndex) => (prevIndex + 1) % scheduleExamples.length);
+        setSuggestion(scheduleExamples[exampleIndex]);
+        setIsSuggestionFading(false);
+      }, 500);
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [exampleIndex]);
  
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema), 
@@ -224,9 +242,9 @@ export default function Home() {
   const handleAddToCalendar = async () => {
 
     try { 
-      //for (const event of generatedSchedule) {
-       // await createCalendarEvent(event);
-      //}
+      for (const event of generatedSchedule) {
+        await createCalendarEvent(event);
+      }
        toast({
             title: "Success",
             description: "Schedule added to calendar successfully!  Check your Google Calendar.",
@@ -286,6 +304,15 @@ export default function Home() {
 
   const clearInputField = () => {
     setScheduleText("");
+    if (inputRef.current) {
+        inputRef.current.focus();
+      }
+  };
+  const handleSuggestionClick = () => {
+    setScheduleText(suggestion);
+     if (inputRef.current) {
+        inputRef.current.focus();
+      }
   };
 
   return (
@@ -308,38 +335,39 @@ export default function Home() {
       {/* Input card */}
       <Card className="w-full max-w-md">
         <CardContent className="p-4">
-          <div className="mb-4">
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                {scheduleExamples.map((example, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setScheduleText(example)}
-                  >
-                    {example}
-                  </Button>
-                ))}
-              </div>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Enter schedule or instruction"
-                value={scheduleText}
-                onChange={(e) => setScheduleText(e.target.value)}
-              />
-              {scheduleText && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full"
-                  onClick={clearInputField}
-                >
-                  <Icons.close className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+        <div className="mb-4">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Enter schedule or instruction"
+              value={scheduleText}
+              onChange={(e) => setScheduleText(e.target.value)}
+              ref={inputRef}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full"
+              onClick={clearInputField}
+              aria-label="Clear Input"
+            >
+              <Icons.close className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
+        <div className="flex justify-center mt-2">
+          <Button
+            variant="link"
+            className={cn(
+              "transition-opacity duration-500 ease-in-out",
+              isSuggestionFading ? "opacity-0" : "opacity-100"
+            )}
+            onClick={handleSuggestionClick}
+            disabled={isSuggestionFading}
+          >
+            {suggestion}
+          </Button>
+        </div>
 
           <div className="flex justify-between mb-4">
             <Button variant="outline" onClick={handleGenerateSchedule} disabled={isLoading}>
