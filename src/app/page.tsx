@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ThemeProvider } from "@/components/theme-provider";
 import { useTheme } from 'next-themes';
+import { useToast } from "@/hooks/use-toast"
 
 
 const eventSchema = z.object({
@@ -73,8 +74,6 @@ export default function Home() {
   const { setTheme, resolvedTheme } = useTheme() // Get theme settings
   const [scheduleText, setScheduleText] = useState(""); // Input text for schedule
   const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]); // Generated events
-  const [statusMessage, setStatusMessage] = useState<string | null>(null); // Status message
-  const [error, setError] = useState<string | null>(null); // Error message
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(editingEventIndexInitialValue); // Index of event being edited
   const [schedules, setSchedules] = useState<Schedule[]>([]); // Saved schedules
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null); // Selected schedule ID
@@ -82,6 +81,7 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog state
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null); // Schedule ID being deleted
   const [isLoading, setIsLoading] = useState(false);
+   const { toast } = useToast()
 
 
   useEffect(() => {
@@ -96,18 +96,18 @@ export default function Home() {
   }, [schedules]);
 
   // Function to change example
-  const changeExample = useCallback(() => {
-    const randomIndex = Math.floor(Math.random() * scheduleExamples.length);
-    setScheduleText(scheduleExamples[randomIndex]);
-  }, []);
+  //const changeExample = useCallback(() => {
+   // const randomIndex = Math.floor(Math.random() * scheduleExamples.length);
+    //setScheduleText(scheduleExamples[randomIndex]);
+  //}, []);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      changeExample(); 
-    }, 5000);
+  //useEffect(() => {
+   // const intervalId = setInterval(() => {
+    //  changeExample(); 
+   // }, 5000);
 
-    return () => clearInterval(intervalId); // Clean up interval on unmount
-  }, [changeExample]);
+   // return () => clearInterval(intervalId); // Clean up interval on unmount
+  //}, [changeExample]);
   
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema), 
@@ -124,38 +124,48 @@ export default function Home() {
   // Function to generate schedule
   const handleGenerateSchedule = useCallback(async () => {
     if (isLoading) return;
-    setError(null);
-    setStatusMessage(null);
     setIsLoading(true);
 
     try {
       const result = await generateScheduleFromPrompt({ prompt: scheduleText });
       setGeneratedSchedule(result.events as CalendarEvent[]);
-      setStatusMessage("Schedule generated successfully!"); 
+        toast({
+            title: "Success",
+            description: "Schedule generated successfully!",
+        })
     } catch (e: any) {
-      setError(`Failed to generate schedule: ${e.message}`);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: `Failed to generate schedule: ${e.message}`,
+        })
     } finally {
       setIsLoading(false);
     }
-  }, [scheduleText, setIsLoading, setGeneratedSchedule, setError, setStatusMessage, isLoading]);
+  }, [scheduleText, setIsLoading, setGeneratedSchedule, toast]);
   
   // Function to interpret schedule
   const handleInterpretSchedule = useCallback(async () => {
     if (isLoading) return;
-    setError(null);
-     setStatusMessage(null); 
     setIsLoading(true);
 
     try {
       const result = await interpretScheduleText({ scheduleText: scheduleText });
       setGeneratedSchedule(result as CalendarEvent[]);
-      setStatusMessage("Schedule interpreted successfully!");
+        toast({
+            title: "Success",
+            description: "Schedule interpreted successfully!",
+        })
     } catch (e: any) {
-      setError(`Failed to interpret schedule: ${e.message}`);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: `Failed to interpret schedule: ${e.message}`,
+        })
     } finally {
       setIsLoading(false);
     }
-  }, [scheduleText, setIsLoading, setGeneratedSchedule, setError, setStatusMessage, isLoading]);
+  }, [scheduleText, setIsLoading, setGeneratedSchedule, toast]);
 
   // Function to edit event
   const handleEditEvent = useCallback((index: number) => {
@@ -180,9 +190,12 @@ export default function Home() {
       };
       setGeneratedSchedule(updatedSchedule);
       setEditingEventIndex(null);
-      setStatusMessage("Schedule updated successfully!");
+       toast({
+            title: "Success",
+            description: "Schedule updated successfully!",
+        })
     }
-  }, [generatedSchedule, editingEventIndex, setGeneratedSchedule, setEditingEventIndex, setStatusMessage]);
+  }, [generatedSchedule, editingEventIndex, setGeneratedSchedule, setEditingEventIndex, toast]);
   
   const handleDiscardChanges = () => {
     if (selectedScheduleId) {
@@ -193,12 +206,19 @@ export default function Home() {
     } else {
       setGeneratedSchedule([]);
     }
-    setStatusMessage("Changes discarded.");
+       toast({
+            title: "Success",
+            description: "Changes discarded.",
+        })
   };
 
   const handleSaveSchedule = useCallback(() => {
     if (scheduleName.trim() === "") {
-      setError("Schedule name is required.");
+       toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Schedule name is required.",
+        })
       return;
     }
 
@@ -209,22 +229,28 @@ export default function Home() {
     };
 
     setSchedules([...schedules, newSchedule]);
-    setStatusMessage("Schedule saved successfully!");
-    setError(null);
-  }, [scheduleName, generatedSchedule, schedules, setError, setSchedules, setStatusMessage]);
+       toast({
+            title: "Success",
+            description: "Schedule saved successfully!",
+        })
+  }, [scheduleName, generatedSchedule, schedules, setSchedules, toast]);
 
   const handleAddToCalendar = async () => {
-    setError(null);
-    setStatusMessage(null);
 
     try { 
       //for (const event of generatedSchedule) {
        // await createCalendarEvent(event);
       //}
-      setStatusMessage("Schedule added to calendar successfully!  Check your Google Calendar.");
+       toast({
+            title: "Success",
+            description: "Schedule added to calendar successfully!  Check your Google Calendar.",
+        })
     } catch (e: any) {
-
-      setError(`Failed to add schedule to calendar: ${e.message}`);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: `Failed to add schedule to calendar: ${e.message}`,
+        })
     }
   };
 
@@ -241,10 +267,13 @@ export default function Home() {
       setSchedules(updatedSchedules);
       setGeneratedSchedule([]);
       setSelectedScheduleId(null);
-      setStatusMessage("Schedule deleted successfully!");
+        toast({
+            title: "Success",
+            description: "Schedule deleted successfully!",
+        })
       setIsDialogOpen(false);
     }
-  }, [schedules, deletingScheduleId, setSchedules, setGeneratedSchedule, setSelectedScheduleId, setStatusMessage, setIsDialogOpen]);
+  }, [schedules, deletingScheduleId, setSchedules, setGeneratedSchedule, setSelectedScheduleId, toast, setIsDialogOpen]);
 
   const cancelDeleteSchedule = useCallback(() => {
     setIsDialogOpen(false);
@@ -259,12 +288,15 @@ export default function Home() {
       const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
       if (selectedSchedule) {
         setGeneratedSchedule(selectedSchedule.events);
-        setStatusMessage(`Schedule "${selectedSchedule.name}" loaded successfully!`);
+           toast({
+                title: "Success",
+                description: `Schedule "${selectedSchedule.name}" loaded successfully!`,
+            })
       } 
      } finally {
         setIsLoading(false);
       }
-  }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, setStatusMessage]);
+  }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, toast]);
 
   return (
     <> 
@@ -307,22 +339,6 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>
-
-      {statusMessage && (
-        <Alert className="mt-4 w-full max-w-md transition-all duration-500 ease-in-out">
-          <Icons.check className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{statusMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      {error && (
-        <Alert variant="destructive" className="mt-4 w-full max-w-md transition-all duration-500 ease-in-out">
-          <Icons.close className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       <Card className="w-full max-w-md mt-4">
           <CardContent>
