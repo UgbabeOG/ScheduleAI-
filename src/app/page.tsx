@@ -1,4 +1,5 @@
 "use client";
+import {ThemeProvider, useTheme } from "@/components/theme-provider";
 import { useState, useEffect } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
@@ -35,8 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-import { useTheme } from "@/components/theme-provider";
-import Particles from "react-tsparticles";
+import Particles, { init } from "react-tsparticles";
 import { loadFull } from "tsparticles";
 
 const eventSchema = z.object({
@@ -550,3 +550,4 @@ export default function Home() {
     </>
   );
 }
+
