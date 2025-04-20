@@ -457,72 +457,82 @@ export default function Home() {
                   control={form.control}
                   name="summary"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Summary</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Event summary" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <>
+                      <FormItem>
+                        <FormLabel>Summary</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Event summary" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    </>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="startTime"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Time</FormLabel>
-                      <FormControl>
-                        <Input type="datetime-local" {...field} value={field.value?.substring(0, 16)} onChange={(e) => field.onChange(e.target.value)} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <>
+                      <FormItem>
+                        <FormLabel>Start Time</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} value={field.value?.substring(0, 16)} onChange={(e) => field.onChange(e.target.value)} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    </>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="endTime"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Time</FormLabel>
-                      <FormControl>
-                        <Input type="datetime-local" {...field} value={field.value?.substring(0, 16)} onChange={(e) => field.onChange(e.target.value)} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <>
+                      <FormItem>
+                        <FormLabel>End Time</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} value={field.value?.substring(0, 16)} onChange={(e) => field.onChange(e.target.value)} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    </>
                   )}
                 />
                  <FormField
                   control={form.control}
                   name="alarm"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel>Set Alarm</FormLabel>
-                        <FormDescription>
-                          Enable or disable alarm for this event.
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
+                    <>
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Set Alarm</FormLabel>
+                          <FormDescription>
+                            Enable or disable alarm for this event.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    </>
                   )}
                 />
                  <FormField
                   control={form.control}
                   name="recurrence"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Recurrence</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Recurrence rule (e.g., RRULE:FREQ=WEEKLY;COUNT=10)" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    FormItem>
+                    <>
+                      <FormItem>
+                        <FormLabel>Recurrence</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Recurrence rule (e.g., RRULE:FREQ=WEEKLY;COUNT=10)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    </>
                   )}
                 />
                  <Button type="submit">Update Event</Button>
@@ -550,6 +560,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
