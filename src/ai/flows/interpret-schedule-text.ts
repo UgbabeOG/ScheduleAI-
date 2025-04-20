@@ -1,4 +1,3 @@
-// noinspection ES6ConvertVarToLetConst
 'use server';
 /**
  * @fileOverview Interprets schedule text using GenAI and translates it into a structured format for Google Calendar.
@@ -62,4 +61,3 @@ const interpretScheduleTextFlow = ai.defineFlow<
   const {output} = await interpretScheduleTextPrompt(input);
   return output!;
 });
-

@@ -37,6 +37,7 @@ import {
 import { useTheme } from 'next-themes';
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/toaster"
 
 
 const eventSchema = z.object({
@@ -314,7 +315,7 @@ export default function Home() {
 
   return (
     <>
-    
+    <Toaster />
 
     <main className="relative flex flex-col items-center justify-center min-h-screen py-2">
     
