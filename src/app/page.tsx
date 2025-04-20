@@ -317,6 +317,7 @@ export default function Home() {
     
 
     <main className="relative flex flex-col items-center justify-center min-h-screen py-2">
+    
       <div className="flex items-center space-x-2 absolute right-4 top-4">
             <Label htmlFor="dark-mode">Dark Mode</Label>
             <Switch
@@ -341,12 +342,13 @@ export default function Home() {
               onChange={(e) => setScheduleText(e.target.value)}
               ref={inputRef}
             />
-            <Button
+             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full hover:bg-accent"
               onClick={clearInputField}
               aria-label="Clear Input"
+              style={{ margin: '0.25rem', border: '1px solid rgba(0, 0, 0, 0.1)' }}
             >
               <Icons.close className="h-4 w-4" />
             </Button>
@@ -432,13 +434,13 @@ export default function Home() {
             </div>
 
             <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={handleSaveSchedule}>
+              <Button variant="outline" className="transition-transform hover:scale-105" onClick={handleSaveSchedule}>
                 Save Schedule
               </Button>
-              <Button variant="outline" onClick={handleDiscardChanges}>
+              <Button variant="outline"  className="transition-transform hover:scale-105" onClick={handleDiscardChanges}>
                 Discard Changes
               </Button>
-              <Button variant="outline" onClick={handleAddToCalendar}>
+              <Button variant="outline" className="transition-transform hover:scale-105" onClick={handleAddToCalendar}>
                 Add to Calendar
               </Button>
             </div>
