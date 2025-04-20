@@ -37,7 +37,7 @@ import {
 
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 const eventSchema = z.object({
   summary: z.string().min(3, {
     message: "Summary must be at least 3 characters.",
@@ -554,7 +554,3 @@ export default function Home() {
     </>
   );
 }
-
-
-
-
