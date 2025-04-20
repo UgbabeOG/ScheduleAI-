@@ -95,20 +95,7 @@ export default function Home() {
     localStorage.setItem('schedules', JSON.stringify(schedules));
   }, [schedules]);
 
-  // Function to change example
-  //const changeExample = useCallback(() => {
-   // const randomIndex = Math.floor(Math.random() * scheduleExamples.length);
-    //setScheduleText(scheduleExamples[randomIndex]);
-  //}, []);
-
-  //useEffect(() => {
-   // const intervalId = setInterval(() => {
-    //  changeExample(); 
-   // }, 5000);
-
-   // return () => clearInterval(intervalId); // Clean up interval on unmount
-  //}, [changeExample]);
-  
+ 
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema), 
       defaultValues: {
@@ -298,6 +285,10 @@ export default function Home() {
       }
   }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, toast]);
 
+  const clearInputField = () => {
+    setScheduleText("");
+  };
+
   return (
     <> 
     
@@ -318,13 +309,23 @@ export default function Home() {
       {/* Input card */}
       <Card className="w-full max-w-md">
         <CardContent className="p-4">
-          <div className="mb-4">
+          <div className="mb-4 relative">
             <Input
               type="text"
               placeholder="Enter schedule or instruction"
               value={scheduleText}
               onChange={(e) => setScheduleText(e.target.value)}
             />
+            {scheduleText && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full"
+                onClick={clearInputField}
+              >
+                <Icons.close className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <div className="flex justify-between mb-4">
