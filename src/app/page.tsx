@@ -1,5 +1,5 @@
 "use client";
-
+import { useTheme } from "next-themes";
 import { useState, useEffect } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
@@ -19,7 +19,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import * as z from "zod"
@@ -37,6 +36,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+import Particles from "react-tsparticles";
+import { loadFull } from "tsparticles";
 const eventSchema = z.object({
   summary: z.string().min(3, {
     message: "Summary must be at least 3 characters.",
@@ -78,7 +79,40 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+    const particlesInit = async (main: any) => {
+    console.log(main);
 
+    // you can initialize the tsParticles instance (main) here, adding custom shapes or presets
+    // this loads the tsparticles package bundle, it's the easiest method for getting everything ready
+    // starting from v2 you can add only the features you need reducing the bundle size
+    await loadFull(main);
+  };
+
+  const particlesLoaded = async (container: any) => {
+    await console.log(container);
+  };
+
+    const particlesOptions = {
+    background: {
+      color: {
+        value: "transparent",
+      },
+    },
+    fpsLimit: 120,
+    interactivity: {
+      events: {
+        onClick: {
+          enable: true,
+          mode: "push",
+        },
+        onHover: {
+          enable: true,
+          mode: "repulse",
+        },
+        resize: true,
+      },
+    }
+  const { setTheme, resolvedTheme } = useTheme()
 
   useEffect(() => {
     const storedSchedules = localStorage.getItem('schedules');
@@ -244,9 +278,39 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-2xl font-bold mb-4">ScheduleAI</h1>
-
+    <>
+     <Particles
+        id="tsparticles"
+        init={particlesInit}
+        loaded={particlesLoaded}
+        options={
+          particlesOptions
+        }
+        className="fixed inset-0 -z-10"
+      />
+    <main className="flex flex-col items-center justify-center min-h-screen py-2">
+      <div className="flex items-center space-x-2 absolute right-4 top-4">
+            <Label htmlFor="dark-mode">Dark Mode</Label>
+            <Switch
+              id="dark-mode"
+              checked={resolvedTheme === "dark"}
+              onCheckedChange={(checked) =>
+                setTheme(checked ? "dark" : "light")
+              }
+            />
+          </div>
+      <h1 className="text-4xl font-bold mb-4">ScheduleAI</h1>
+       <div className="flex items-center space-x-2">
+        <Label htmlFor="dark-mode">Dark Mode</Label>
+        <Switch
+          id="dark-mode"
+          checked={resolvedTheme === "dark"}
+          onCheckedChange={(checked) =>
+            setTheme(checked ? "dark" : "light")
+          }
+        />
+      </div>
+      
       <Card className="w-full max-w-md">
         <CardContent className="p-4">
           <div className="mb-4">
@@ -452,7 +516,8 @@ export default function Home() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-    </div>
+    </main>
+    </>
   );
 }
 

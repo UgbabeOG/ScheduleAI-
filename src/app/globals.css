@@ -15,6 +15,7 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%; /* White (#FFFFFF) */
     --popover-foreground: 0 0% 3.9%;
+
     --primary: 0 40% 50%; /* Teal (#008080) */
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
@@ -43,7 +44,9 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-  .dark {
+
+  :root.dark {
+
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 3.9%;
