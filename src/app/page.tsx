@@ -59,6 +59,13 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
 
+const scheduleExamples = [
+  "Monday: Gym at 6 PM, Tuesday: Yoga at 7 PM",
+  "Work from 9 AM to 5 PM, Lunch at 12 PM",
+  "Meeting with John at 10 AM, Coffee break at 3 PM",
+  "Daily workout at 7 AM, Meditation at 8 PM",
+];
+
 export default function Home() {
   const [scheduleText, setScheduleText] = useState("");
   const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]);
@@ -83,6 +90,15 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('schedules', JSON.stringify(schedules));
   }, [schedules]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * scheduleExamples.length);
+      setScheduleText(scheduleExamples[randomIndex]);
+    }, 5000); // Change example every 5 seconds
+
+    return () => clearInterval(intervalId); // Clean up interval on unmount
+  }, []);
 
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema),
