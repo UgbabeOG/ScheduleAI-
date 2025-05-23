@@ -39,6 +39,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster"
+// Removed Particles imports as they were causing issues and not the primary focus
+// import Particles, { init } from "react-tsparticles";
+// import { loadFull } from "tsparticles";
+// import type { Engine } from "tsparticles-engine";
+// import type { ISourceOptions } from "tsparticles-engine";
 
 
 const eventSchema = z.object({
@@ -72,27 +77,47 @@ const scheduleExamples = [
 ];
 
 export default function Home() {
-  const editingEventIndexInitialValue: null = null;
-  const { setTheme, resolvedTheme } = useTheme() // Get theme settings
-  const [scheduleText, setScheduleText] = useState(""); // Input text for schedule
-  const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]); // Generated events
-  const [initialGeneratedSchedule, setInitialGeneratedSchedule] = useState<CalendarEvent[]>([]); // Store the initially generated schedule
-  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(editingEventIndexInitialValue); // Index of event being edited
-  const [schedules, setSchedules] = useState<Schedule[]>([]); // Saved schedules
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null); // Selected schedule ID
-  const [scheduleName, setScheduleName] = useState<string>(""); // Name for new schedule
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog state
-  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null); // Schedule ID being deleted
+  const { setTheme, resolvedTheme } = useTheme();
+  const [scheduleText, setScheduleText] = useState("");
+  const [generatedSchedule, setGeneratedSchedule] = useState<CalendarEvent[]>([]);
+  const [initialGeneratedSchedule, setInitialGeneratedSchedule] = useState<CalendarEvent[]>([]);
+  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [scheduleName, setScheduleName] = useState<string>("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast()
+  const { toast } = useToast();
   const [exampleIndex, setExampleIndex] = useState(0);
   const [suggestion, setSuggestion] = useState(scheduleExamples[0]);
   const [isSuggestionFading, setIsSuggestionFading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isClient, setIsClient] = useState(false);
 
+  // Particles state and init logic removed for now to focus on hydration
+  // const [initParticles, setInitParticles] = useState(false);
+  // useEffect(() => {
+  //   init("tsparticles", (engine: Engine) => loadFull(engine)).then(() => {
+  //     setInitParticles(true);
+  //   });
+  // }, []);
+
+  // const particlesInit = useCallback(async (engine: Engine) => {
+  //   await loadFull(engine);
+  // }, []);
+
+  // const particlesLoaded = useCallback(async (container: any) => { // Consider using Container type from tsparticles
+  //   // console.log(container); // Optional: log container details
+  // }, []);
+  
+  // const particleOptions = (theme: string | undefined): ISourceOptions => ({
+  //   // ... (particle options - kept for structure if re-enabled)
+  // });
 
 
   useEffect(() => {
+    setIsClient(true);
     const storedSchedules = localStorage.getItem('schedules');
     if (storedSchedules) {
       setSchedules(JSON.parse(storedSchedules));
@@ -100,8 +125,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('schedules', JSON.stringify(schedules));
-  }, [schedules]);
+    if (isClient) { // Guard localStorage access
+        localStorage.setItem('schedules', JSON.stringify(schedules));
+    }
+  }, [schedules, isClient]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -115,14 +142,14 @@ export default function Home() {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [exampleIndex]); // Add exampleIndex to dependencies
+  }, [exampleIndex]); 
  
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema), 
-    defaultValues: {
+    defaultValues: { // Static defaults, dynamic values set in useEffect
       summary: "",
-      startTime: "", // Initialize with empty string or a placeholder
-      endTime: "",   // Initialize with empty string or a placeholder
+      startTime: "", 
+      endTime: "",   
       alarm: false,
       recurrence: "",
     },
@@ -130,25 +157,23 @@ export default function Home() {
   });
 
   useEffect(() => {
-    // Set dynamic default values only on the client after mount
-    // This helps prevent hydration mismatches.
-    const now = new Date().toISOString();
-    if (editingEventIndex === null) { // Only reset to "now" if not editing
-        form.reset({
-            summary: "",
-            startTime: now.substring(0, 16), // Format for datetime-local
-            endTime: now.substring(0, 16),   // Format for datetime-local
-            alarm: false,
-            recurrence: "",
-        });
+    if (isClient) { // Ensure this runs only on the client
+        const now = new Date().toISOString();
+        if (editingEventIndex === null) {
+            form.reset({
+                summary: "",
+                startTime: now.substring(0, 16),
+                endTime: now.substring(0, 16),
+                alarm: false,
+                recurrence: "",
+            });
+        }
     }
-  }, [form.reset, editingEventIndex]); // Add editingEventIndex to dependency array
+  }, [form, editingEventIndex, isClient]);
 
-  // Function to generate schedule
   const handleGenerateSchedule = useCallback(async () => {
     if (isLoading) return;
     setIsLoading(true);
-
     try {
       const result = await generateScheduleFromPrompt({ prompt: scheduleText });
       setGeneratedSchedule(result.events as CalendarEvent[]);
@@ -166,13 +191,11 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [scheduleText, setIsLoading, setGeneratedSchedule, setInitialGeneratedSchedule, toast]);
+  }, [scheduleText, isLoading, toast]);
   
-  // Function to interpret schedule
   const handleInterpretSchedule = useCallback(async () => {
     if (isLoading) return;
     setIsLoading(true);
-
     try {
       const result = await interpretScheduleText({ scheduleText: scheduleText });
       setGeneratedSchedule(result as CalendarEvent[]);
@@ -190,28 +213,27 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [scheduleText, setIsLoading, setGeneratedSchedule, setInitialGeneratedSchedule, toast]);
+  }, [scheduleText, isLoading, toast]);
 
-  // Function to edit event
   const handleEditEvent = useCallback((index: number) => {
     setEditingEventIndex(index);
     const eventToEdit = generatedSchedule[index];
     form.reset({
       summary: eventToEdit.summary,
-      startTime: eventToEdit.startTime.substring(0,16), // Ensure format for datetime-local
-      endTime: eventToEdit.endTime.substring(0,16),   // Ensure format for datetime-local
-      alarm: false, // Assuming default value for alarm
-      recurrence: "" // Assuming default value for recurrence
+      startTime: eventToEdit.startTime.substring(0,16),
+      endTime: eventToEdit.endTime.substring(0,16),
+      alarm: false, 
+      recurrence: "" 
     });
-  }, [generatedSchedule, form, setEditingEventIndex]);
+  }, [generatedSchedule, form]);
 
   const handleUpdateEvent = useCallback((values: EventValues) => {
     if (editingEventIndex !== null) {
       const updatedSchedule = [...generatedSchedule];
       updatedSchedule[editingEventIndex] = {
         summary: values.summary,
-        startTime: new Date(values.startTime).toISOString(), // Convert back to ISOString
-        endTime: new Date(values.endTime).toISOString(),   // Convert back to ISOString
+        startTime: new Date(values.startTime).toISOString(),
+        endTime: new Date(values.endTime).toISOString(),
       };
       setGeneratedSchedule(updatedSchedule);
       setEditingEventIndex(null);
@@ -220,12 +242,11 @@ export default function Home() {
             description: "Schedule updated successfully!",
         })
     }
-  }, [generatedSchedule, editingEventIndex, setGeneratedSchedule, setEditingEventIndex, toast]);
+  }, [generatedSchedule, editingEventIndex, toast]);
   
   const handleDiscardChanges = () => {
-    // Discard only user edits, revert to the initially generated schedule
-    setGeneratedSchedule([...initialGeneratedSchedule]); // Use spread to create a new array instance
-    setEditingEventIndex(null); // Close edit form if open
+    setGeneratedSchedule([...initialGeneratedSchedule]);
+    setEditingEventIndex(null);
        toast({
             title: "Success",
             description: "Changes discarded. Schedule reverted to initial state.",
@@ -241,20 +262,18 @@ export default function Home() {
         })
       return;
     }
-
     const newSchedule: Schedule = {
       id: generateId(),
       name: scheduleName,
       events: generatedSchedule,
     };
-
     setSchedules([...schedules, newSchedule]);
-    setScheduleName(""); // Clear schedule name input
+    setScheduleName("");
        toast({
             title: "Success",
             description: "Schedule saved successfully!",
         })
-  }, [scheduleName, generatedSchedule, schedules, setSchedules, toast]);
+  }, [scheduleName, generatedSchedule, schedules, toast]);
 
   const handleAddToCalendar = async () => {
     if (generatedSchedule.length === 0) {
@@ -272,7 +291,7 @@ export default function Home() {
       }
        toast({
             title: "Success",
-            description: "Schedule added to calendar successfully!  Check your Google Calendar.",
+            description: "Schedule added to calendar successfully! Check your Google Calendar.",
         })
     } catch (e: any) {
         toast({
@@ -287,7 +306,6 @@ export default function Home() {
 
   const handleDeleteSchedule = async (scheduleId: string) => {
     if (isLoading) return;
-    
     setDeletingScheduleId(scheduleId);
     setIsDialogOpen(true);
   };
@@ -308,12 +326,12 @@ export default function Home() {
       setIsDialogOpen(false);
       setDeletingScheduleId(null);
     }
-  }, [schedules, deletingScheduleId, selectedScheduleId, setSchedules, setGeneratedSchedule, setInitialGeneratedSchedule, setSelectedScheduleId, toast, setIsDialogOpen]);
+  }, [schedules, deletingScheduleId, selectedScheduleId, toast]);
 
   const cancelDeleteSchedule = useCallback(() => {
     setIsDialogOpen(false);
     setDeletingScheduleId(null);
-  }, [setIsDialogOpen, setDeletingScheduleId]);
+  }, []);
 
   const handleLoadSchedule = useCallback(async (scheduleId: string) => {
     if (isLoading) return
@@ -322,8 +340,8 @@ export default function Home() {
       setSelectedScheduleId(scheduleId);
       const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
       if (selectedSchedule) {
-        setGeneratedSchedule([...selectedSchedule.events]); // Use spread for new array instance
-        setInitialGeneratedSchedule([...selectedSchedule.events]); // Use spread for new array instance
+        setGeneratedSchedule([...selectedSchedule.events]);
+        setInitialGeneratedSchedule([...selectedSchedule.events]);
            toast({
                 title: "Success",
                 description: `Schedule "${selectedSchedule.name}" loaded successfully!`,
@@ -332,7 +350,7 @@ export default function Home() {
      } finally {
         setIsLoading(false);
       }
-  }, [isLoading, schedules, setIsLoading, setSelectedScheduleId, setGeneratedSchedule, setInitialGeneratedSchedule, toast]);
+  }, [isLoading, schedules, toast]);
 
   const clearInputField = () => {
     setScheduleText("");
@@ -350,23 +368,41 @@ export default function Home() {
   return (
     <>
     <Toaster />
-
     <main className="relative flex flex-col items-center justify-center min-h-screen py-8 px-4 bg-gradient-to-br from-slate-900 to-slate-700 text-white body-container">
-    
+      {/* Particles Background - Temporarily commented out
+      {isClient && resolvedTheme && initParticles && (
+        <Particles
+          id="tsparticles"
+          // init={particlesInit} // init prop might be from an older version or handled by the global init
+          loaded={particlesLoaded}
+          options={particleOptions(resolvedTheme)}
+          className="absolute inset-0 -z-10"
+        />
+      )}
+      */}
+      
       <div className="flex items-center space-x-2 absolute right-4 top-4">
-            <Label htmlFor="dark-mode" className="text-sm text-gray-300">{resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}</Label>
+        {isClient ? (
+          <>
+            <Label htmlFor="dark-mode" className="text-sm text-gray-300">
+              {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+            </Label>
             <Switch
               id="dark-mode"
               checked={resolvedTheme === "dark"}
-              onCheckedChange={(checked) =>
-                setTheme(checked ? "dark" : "light")
-              }
+              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
               className="data-[state=checked]:bg-teal-500 data-[state=unchecked]:bg-gray-600"
             />
-          </div>
+          </>
+        ) : (
+          <>
+            <div className="h-5 w-[75px]" /> {/* Placeholder for Label */}
+            <div className="h-6 w-11" /> {/* Placeholder for Switch */}
+          </>
+        )}
+      </div>
       <h1 className="text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-400 to-sky-500 animate-pulse">ScheduleAI</h1>
 
-      {/* Input card */}
       <Card className="w-full max-w-lg bg-slate-800/70 backdrop-blur-md border-slate-700 shadow-xl">
         <CardContent className="p-6">
         <div className="mb-4">
@@ -438,7 +474,6 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
-      {/* Generated Schedule card */}
 
       {generatedSchedule.length > 0 && (
         <Card className="w-full max-w-lg mt-6 bg-slate-800/70 backdrop-blur-md border-slate-700 shadow-xl transition-opacity duration-500 ease-in-out">
@@ -517,7 +552,7 @@ export default function Home() {
                         <Input 
                           type="datetime-local" 
                           {...field} 
-                          value={field.value ? field.value.substring(0, 16) : ''} // Handle potential undefined value
+                          value={field.value ? field.value.substring(0, 16) : ''} 
                           onChange={(e) => field.onChange(e.target.value)}
                           className="bg-slate-700 border-slate-600 text-white focus:ring-teal-500 focus:border-teal-500 appearance-none"
                         />
@@ -536,7 +571,7 @@ export default function Home() {
                         <Input 
                           type="datetime-local" 
                           {...field} 
-                          value={field.value ? field.value.substring(0, 16) : ''} // Handle potential undefined value
+                          value={field.value ? field.value.substring(0, 16) : ''} 
                           onChange={(e) => field.onChange(e.target.value)}
                           className="bg-slate-700 border-slate-600 text-white focus:ring-teal-500 focus:border-teal-500 appearance-none"
                         />
@@ -603,3 +638,4 @@ export default function Home() {
     </>
   );
 }
+
