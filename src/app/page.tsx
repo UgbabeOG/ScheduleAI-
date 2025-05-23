@@ -39,12 +39,6 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster"
-// Removed Particles imports as they were causing issues and not the primary focus
-// import Particles, { init } from "react-tsparticles";
-// import { loadFull } from "tsparticles";
-// import type { Engine } from "tsparticles-engine";
-// import type { ISourceOptions } from "tsparticles-engine";
-
 
 const eventSchema = z.object({
   summary: z.string().min(3, {
@@ -95,27 +89,6 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isClient, setIsClient] = useState(false);
 
-  // Particles state and init logic removed for now to focus on hydration
-  // const [initParticles, setInitParticles] = useState(false);
-  // useEffect(() => {
-  //   init("tsparticles", (engine: Engine) => loadFull(engine)).then(() => {
-  //     setInitParticles(true);
-  //   });
-  // }, []);
-
-  // const particlesInit = useCallback(async (engine: Engine) => {
-  //   await loadFull(engine);
-  // }, []);
-
-  // const particlesLoaded = useCallback(async (container: any) => { // Consider using Container type from tsparticles
-  //   // console.log(container); // Optional: log container details
-  // }, []);
-  
-  // const particleOptions = (theme: string | undefined): ISourceOptions => ({
-  //   // ... (particle options - kept for structure if re-enabled)
-  // });
-
-
   useEffect(() => {
     setIsClient(true);
     const storedSchedules = localStorage.getItem('schedules');
@@ -146,7 +119,7 @@ export default function Home() {
  
   const form = useForm<EventValues>({
     resolver: zodResolver(eventSchema), 
-    defaultValues: { // Static defaults, dynamic values set in useEffect
+    defaultValues: { 
       summary: "",
       startTime: "", 
       endTime: "",   
@@ -157,19 +130,35 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (isClient) { // Ensure this runs only on the client
-        const now = new Date().toISOString();
+    if (isClient) { 
         if (editingEventIndex === null) {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (date: Date) => new Date(date.getTime() - offset).toISOString().substring(0, 16);
+            
             form.reset({
                 summary: "",
-                startTime: now.substring(0, 16),
-                endTime: now.substring(0, 16),
+                startTime: localISOTime(now),
+                endTime: localISOTime(new Date(now.getTime() + 60 * 60 * 1000)), // Default to 1 hour later
                 alarm: false,
                 recurrence: "",
             });
+        } else {
+            const eventToEdit = generatedSchedule[editingEventIndex];
+             const offset = new Date().getTimezoneOffset() * 60000;
+             const localISOTime = (isoString: string) => new Date(new Date(isoString).getTime() - offset).toISOString().substring(0, 16);
+
+            form.reset({
+                summary: eventToEdit.summary,
+                startTime: localISOTime(eventToEdit.startTime),
+                endTime: localISOTime(eventToEdit.endTime),
+                // Assuming alarm and recurrence are not part of CalendarEvent yet or handled differently
+                alarm: false, 
+                recurrence: "" 
+            });
         }
     }
-  }, [form, editingEventIndex, isClient]);
+  }, [form, editingEventIndex, isClient, generatedSchedule]);
 
   const handleGenerateSchedule = useCallback(async () => {
     if (isLoading) return;
@@ -217,15 +206,9 @@ export default function Home() {
 
   const handleEditEvent = useCallback((index: number) => {
     setEditingEventIndex(index);
-    const eventToEdit = generatedSchedule[index];
-    form.reset({
-      summary: eventToEdit.summary,
-      startTime: eventToEdit.startTime.substring(0,16),
-      endTime: eventToEdit.endTime.substring(0,16),
-      alarm: false, 
-      recurrence: "" 
-    });
-  }, [generatedSchedule, form]);
+    // Form values are set by the useEffect that depends on editingEventIndex
+  }, []);
+
 
   const handleUpdateEvent = useCallback((values: EventValues) => {
     if (editingEventIndex !== null) {
@@ -246,7 +229,7 @@ export default function Home() {
   
   const handleDiscardChanges = () => {
     setGeneratedSchedule([...initialGeneratedSchedule]);
-    setEditingEventIndex(null);
+    setEditingEventIndex(null); // Also exit editing mode
        toast({
             title: "Success",
             description: "Changes discarded. Schedule reverted to initial state.",
@@ -341,7 +324,7 @@ export default function Home() {
       const selectedSchedule = schedules.find(schedule => schedule.id === scheduleId);
       if (selectedSchedule) {
         setGeneratedSchedule([...selectedSchedule.events]);
-        setInitialGeneratedSchedule([...selectedSchedule.events]);
+        setInitialGeneratedSchedule([...selectedSchedule.events]); // Set initial state for loaded schedule
            toast({
                 title: "Success",
                 description: `Schedule "${selectedSchedule.name}" loaded successfully!`,
@@ -369,17 +352,6 @@ export default function Home() {
     <>
     <Toaster />
     <main className="relative flex flex-col items-center justify-center min-h-screen py-8 px-4 bg-gradient-to-br from-slate-900 to-slate-700 text-white body-container">
-      {/* Particles Background - Temporarily commented out
-      {isClient && resolvedTheme && initParticles && (
-        <Particles
-          id="tsparticles"
-          // init={particlesInit} // init prop might be from an older version or handled by the global init
-          loaded={particlesLoaded}
-          options={particleOptions(resolvedTheme)}
-          className="absolute inset-0 -z-10"
-        />
-      )}
-      */}
       
       <div className="flex items-center space-x-2 absolute right-4 top-4">
         {isClient ? (
@@ -396,8 +368,8 @@ export default function Home() {
           </>
         ) : (
           <>
-            <div className="h-5 w-[75px]" /> {/* Placeholder for Label */}
-            <div className="h-6 w-11" /> {/* Placeholder for Switch */}
+            <div className="h-5 w-[75px] bg-slate-700 animate-pulse rounded-md" /> {/* Placeholder for Label */}
+            <div className="h-6 w-11 bg-slate-700 animate-pulse rounded-full" /> {/* Placeholder for Switch */}
           </>
         )}
       </div>
@@ -638,4 +610,3 @@ export default function Home() {
     </>
   );
 }
-
