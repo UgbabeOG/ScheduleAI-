@@ -371,6 +371,9 @@ export default function Home() {
         )}
       </div>
       <h1 className="text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-400 to-sky-500 animate-pulse">ScheduleAI</h1>
+      <p className="text-lg text-center text-muted-foreground mb-8 max-w-prose">
+        ScheduleAI helps you effortlessly create and manage your schedule using natural language. Simply describe your events and let ScheduleAI generate a calendar for you, or interpret existing text into scheduled events.
+      </p>
 
       <Card className="w-full max-w-lg bg-card/70 backdrop-blur-md border-border shadow-xl">
         <CardContent className="p-6">
