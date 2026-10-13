@@ -1,32 +1,29 @@
 'use server';
 
-/**
- * @fileOverview A flow that generates a schedule from a user prompt using GenAI.
- *
- * - generateScheduleFromPrompt - A function that handles the schedule generation process.
- * - GenerateScheduleFromPromptInput - The input type for the generateScheduleFromPrompt function.
- * - GenerateScheduleFromPromptOutput - The return type for the generateScheduleFromPrompt function.
- */
-
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import {CalendarEvent, createCalendarEvent} from '@/services/calendar';
+
+const calendarEventSchema = z.object({
+  summary: z.string().trim().min(1).describe('A short, clear event title.'),
+  startTime: z.string().datetime({offset: true}).describe('The event start time as ISO 8601 with a UTC offset.'),
+  endTime: z.string().datetime({offset: true}).describe('The event end time as ISO 8601 with a UTC offset.'),
+}).refine(
+  event => new Date(event.endTime).getTime() > new Date(event.startTime).getTime(),
+  {message: 'An event must end after it starts.'}
+);
 
 const GenerateScheduleFromPromptInputSchema = z.object({
-  prompt: z.string().describe('The prompt describing the schedule to generate.'),
+  prompt: z.string().trim().min(1).max(5000).describe('The prompt describing the schedule to generate.'),
+  currentDate: z.string().describe('The current local date in YYYY-MM-DD format.'),
+  timeZone: z.string().describe('The user local IANA time zone.'),
 });
 export type GenerateScheduleFromPromptInput = z.infer<
   typeof GenerateScheduleFromPromptInputSchema
 >;
 
 const GenerateScheduleFromPromptOutputSchema = z.object({
-  events: z.array(
-    z.object({
-      summary: z.string().describe('The title or summary of the event.'),
-      startTime: z.string().describe('The start time of the event (ISO 8601 format).'),
-      endTime: z.string().describe('The end time of the event (ISO 8601 format).'),
-    })
-  ).describe('The generated schedule as an array of calendar events.'),
+  events: z.array(calendarEventSchema).min(1).max(100)
+    .describe('The generated schedule as an array of calendar events.'),
 });
 export type GenerateScheduleFromPromptOutput = z.infer<
   typeof GenerateScheduleFromPromptOutputSchema
@@ -41,30 +38,19 @@ export async function generateScheduleFromPrompt(
 const generateSchedulePrompt = ai.definePrompt({
   name: 'generateSchedulePrompt',
   input: {
-    schema: z.object({
-      prompt: z.string().describe('The prompt describing the schedule to generate.'),
-    }),
+    schema: GenerateScheduleFromPromptInputSchema,
   },
   output: {
-    schema: z.object({
-      events: z
-        .array(
-          z.object({
-            summary: z.string().describe('The title or summary of the event.'),
-            startTime: z
-              .string()
-              .describe('The start time of the event (ISO 8601 format).'),
-            endTime: z.string().describe('The end time of the event (ISO 8601 format).'),
-          })
-        )
-        .describe('The generated schedule as an array of calendar events.'),
-    }),
+    schema: GenerateScheduleFromPromptOutputSchema,
   },
-  prompt: `You are a personal assistant that can create a schedule based on user prompts.
-  Create a detailed schedule based on the prompt below.
-  The output should be a JSON array of calendar events with the keys summary, startTime, and endTime.
-  The startTime and endTime should be in ISO 8601 format.
-  Prompt: {{{prompt}}}`,
+  prompt: `You are a practical personal planning assistant. Turn the user's request into a useful, realistic schedule of specific calendar events.
+
+Use the user's local date and time zone when resolving relative dates and times. If the request gives no date, schedule it starting today. For repeated weekly routines without an end date, create the next seven days of occurrences. Respect any duration or date range the user specifies.
+Return at least one event and no more than 100. Use concise event titles, ISO 8601 timestamps with the supplied time zone's correct UTC offset, and ensure every end time is after its start time. Do not invent events unrelated to the request.
+
+Current local date: {{{currentDate}}}
+User time zone: {{{timeZone}}}
+Request: {{{prompt}}}`,
 });
 
 const generateScheduleFromPromptFlow = ai.defineFlow<
@@ -80,12 +66,7 @@ const generateScheduleFromPromptFlow = ai.defineFlow<
     const {output} = await generateSchedulePrompt(input);
 
     if (!output) {
-      throw new Error('Failed to generate schedule from prompt.');
-    }
-
-    // Example of calling the calendar service.
-    for (const event of output.events) {
-      await createCalendarEvent(event as CalendarEvent);
+      throw new Error('The AI did not return a schedule. Please try a more specific request.');
     }
 
     return output;

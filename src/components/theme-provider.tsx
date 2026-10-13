@@ -3,13 +3,7 @@
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
-interface ThemeProviderProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  attribute?: string;
-  defaultTheme?: string;
-  enableSystem?: boolean;
-  disableTransitionOnChange?: boolean;
-}
+type ThemeProviderProps = React.ComponentProps<typeof NextThemesProvider>;
 
 export function ThemeProvider({
   children,
@@ -21,5 +15,4 @@ export function ThemeProvider({
     </NextThemesProvider>
   );
 }
-
 

@@ -4,7 +4,7 @@ import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateScheduleFromPrompt } from "@/ai/flows/generate-schedule-from-prompt";
 import { interpretScheduleText } from "@/ai/flows/interpret-schedule-text";
-import { CalendarEvent, createCalendarEvent } from "@/services/calendar";
+import { CalendarEvent, createCalendarEvent, requestCalendarAccessToken } from "@/services/calendar";
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,10 +44,21 @@ const eventSchema = z.object({
   summary: z.string().min(3, {
     message: "Summary must be at least 3 characters.",
   }),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
+  startTime: z.string().min(1, { message: "Start time is required." }),
+  endTime: z.string().min(1, { message: "End time is required." }),
   alarm: z.boolean().default(false),
   recurrence: z.string().optional(),
+}).superRefine((event, context) => {
+  const startTime = new Date(event.startTime).getTime();
+  const endTime = new Date(event.endTime).getTime();
+  if (!Number.isFinite(startTime)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["startTime"], message: "Enter a valid start time." });
+  }
+  if (!Number.isFinite(endTime)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["endTime"], message: "Enter a valid end time." });
+  } else if (Number.isFinite(startTime) && endTime <= startTime) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["endTime"], message: "End time must be after start time." });
+  }
 });
 
 type EventValues = z.infer<typeof eventSchema>
@@ -70,6 +81,19 @@ const scheduleExamples = [
   "Daily workout at 7 AM, Meditation at 8 PM",
 ];
 
+function getScheduleContext() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return {
+    currentDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "An unexpected error occurred.";
+}
+
 export default function Home() {
   const { setTheme, resolvedTheme } = useTheme();
   const [scheduleText, setScheduleText] = useState("");
@@ -82,11 +106,13 @@ export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
+  const [calendarAccessToken, setCalendarAccessToken] = useState<string | null>(null);
   const { toast } = useToast();
   const [exampleIndex, setExampleIndex] = useState(0);
   const [suggestion, setSuggestion] = useState(scheduleExamples[0]);
   const [isSuggestionFading, setIsSuggestionFading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -161,20 +187,24 @@ export default function Home() {
 
   const handleGenerateSchedule = useCallback(async () => {
     if (isLoading) return;
+    if (!scheduleText.trim()) {
+      toast({ variant: "destructive", title: "Enter a request", description: "Describe the schedule or plan you want to generate." });
+      return;
+    }
     setIsLoading(true);
     try {
-      const result = await generateScheduleFromPrompt({ prompt: scheduleText });
-      setGeneratedSchedule(result.events as CalendarEvent[]);
-      setInitialGeneratedSchedule(result.events as CalendarEvent[]);
+      const result = await generateScheduleFromPrompt({ prompt: scheduleText, ...getScheduleContext() });
+      setGeneratedSchedule(result.events);
+      setInitialGeneratedSchedule(result.events);
         toast({
             title: "Success",
             description: "Schedule generated successfully!",
         })
-    } catch (e: any) {
+    } catch (e: unknown) {
         toast({
             variant: "destructive",
             title: "Error",
-            description: `Failed to generate schedule: ${e.message}`,
+            description: `Failed to generate schedule: ${getErrorMessage(e)}`,
         })
     } finally {
       setIsLoading(false);
@@ -183,20 +213,24 @@ export default function Home() {
   
   const handleInterpretSchedule = useCallback(async () => {
     if (isLoading) return;
+    if (!scheduleText.trim()) {
+      toast({ variant: "destructive", title: "Enter schedule text", description: "Add the schedule text you want interpreted." });
+      return;
+    }
     setIsLoading(true);
     try {
-      const result = await interpretScheduleText({ scheduleText: scheduleText });
-      setGeneratedSchedule(result as CalendarEvent[]);
-      setInitialGeneratedSchedule(result as CalendarEvent[]);
+      const result = await interpretScheduleText({ scheduleText, ...getScheduleContext() });
+      setGeneratedSchedule(result);
+      setInitialGeneratedSchedule(result);
         toast({
             title: "Success",
             description: "Schedule interpreted successfully!",
         })
-    } catch (e: any) {
+    } catch (e: unknown) {
         toast({
             variant: "destructive",
             title: "Error",
-            description: `Failed to interpret schedule: ${e.message}`,
+            description: `Failed to interpret schedule: ${getErrorMessage(e)}`,
         })
     } finally {
       setIsLoading(false);
@@ -248,7 +282,7 @@ export default function Home() {
       name: scheduleName,
       events: generatedSchedule,
     };
-    setSchedules([...schedules, newSchedule]);
+    setSchedules((currentSchedules) => [...currentSchedules, newSchedule]);
     setScheduleName("");
        toast({
             title: "Success",
@@ -265,23 +299,74 @@ export default function Home() {
         });
         return;
     }
+    if (!calendarAccessToken) {
+      toast({
+        variant: "destructive",
+        title: "Connect Google Calendar",
+        description: "Sign in with Google and approve Calendar access before adding events.",
+      });
+      return;
+    }
     setIsLoading(true);
-    try { 
+    const failedEvents: string[] = [];
+    let successfulCount = 0;
+    let stoppedForExpiredAccess = false;
+    try {
       for (const event of generatedSchedule) {
-        await createCalendarEvent(event);
+        try {
+          await createCalendarEvent(event, calendarAccessToken);
+          successfulCount += 1;
+        } catch (error: unknown) {
+          const message = getErrorMessage(error);
+          failedEvents.push(`${event.summary}: ${message}`);
+          if (message.startsWith("Google Calendar access expired.")) {
+            setCalendarAccessToken(null);
+            stoppedForExpiredAccess = true;
+            break;
+          }
+        }
+      }
+      if (failedEvents.length > 0) {
+        const failureDetails = failedEvents.slice(0, 2).join(" ");
+        const remainingFailures = failedEvents.length > 2 ? ` And ${failedEvents.length - 2} more.` : "";
+        const notAttempted = generatedSchedule.length - successfulCount - failedEvents.length;
+        const stoppedMessage = stoppedForExpiredAccess
+          ? ` ${notAttempted} event${notAttempted === 1 ? " was" : "s were"} not attempted; reconnect Google Calendar to continue.`
+          : "";
+        toast({
+          variant: "destructive",
+          title: `Added ${successfulCount} of ${generatedSchedule.length} events`,
+          description: `${failureDetails}${remainingFailures}${stoppedMessage}`,
+        });
+        return;
       }
        toast({
             title: "Success",
-            description: "Schedule added to calendar successfully! Check your Google Calendar.",
-        })
-    } catch (e: any) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: `Failed to add schedule to calendar: ${e.message}`,
+            description: `${successfulCount} event${successfulCount === 1 ? "" : "s"} added to your Google Calendar.`,
         })
     } finally {
         setIsLoading(false);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    if (isConnectingCalendar) return;
+    setIsConnectingCalendar(true);
+    try {
+      const accessToken = await requestCalendarAccessToken(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "");
+      setCalendarAccessToken(accessToken);
+      toast({
+        title: "Google Calendar connected",
+        description: "You can now add reviewed events to your primary calendar.",
+      });
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Could not connect Google Calendar",
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setIsConnectingCalendar(false);
     }
   };
 
@@ -379,18 +464,17 @@ export default function Home() {
         <CardContent className="p-6">
         <div className="mb-4">
           <div className="relative flex items-center">
-            <Input
-              type="text"
-              placeholder="Enter schedule or instruction (e.g., 'Morning jog at 7am')"
+            <Textarea
+              placeholder="Describe your schedule or plan (e.g., 'Plan three strength workouts this week, after work, with rest days between sessions')"
               value={scheduleText}
               onChange={(e) => setScheduleText(e.target.value)}
               ref={inputRef}
-              className="pr-10"
+              className="min-h-28 resize-y pr-10"
             />
              <Button
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-accent text-muted-foreground hover:text-accent-foreground"
+              className="absolute right-1 top-2 h-8 w-8 rounded-full hover:bg-accent text-muted-foreground hover:text-accent-foreground"
               onClick={clearInputField}
               aria-label="Clear Input"
             >
@@ -421,6 +505,24 @@ export default function Home() {
               <Icons.edit className="mr-2 h-4 w-4" /> Interpret Text
               {isLoading && <Icons.spinner className="ml-2 h-4 w-4 animate-spin" />}
             </Button>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-border pt-4">
+            <p className="text-sm text-muted-foreground">
+              {calendarAccessToken
+                ? "Google Calendar is connected for this session."
+                : "Connect Google Calendar to add events after reviewing your plan."}
+            </p>
+            <div className="flex gap-2">
+              {calendarAccessToken && (
+                <Button variant="outline" onClick={() => setCalendarAccessToken(null)}>
+                  Disconnect
+                </Button>
+              )}
+              <Button variant={calendarAccessToken ? "outline" : "default"} onClick={handleConnectCalendar} disabled={isConnectingCalendar}>
+                {isConnectingCalendar && <Icons.spinner className="h-4 w-4 animate-spin" />}
+                {calendarAccessToken ? "Reconnect" : "Connect Google Calendar"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
